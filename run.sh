@@ -34,10 +34,10 @@ install_google_chrome(){
 
 install_discord(){
     echo "Installing Discord..."
-    if ! command -v flatpak &> /dev/null; then
-        install_flatpak
-    fi
-    flatpak install flathub com.discordapp.Discord -y
+    apt install wget -y
+    wget -O discord.deb "https://discord.com/api/download?platform=linux&format=deb"
+    apt install ./discord.deb -y
+    rm discord.deb
     echo "Installed Discord successfully"
 }
 
@@ -78,7 +78,7 @@ show_menu() {
         echo "2) Install Essentials"
         echo "3) Install Flatpak"
         echo "4) Install Google Chrome"
-        echo "5) Install Discord (Flatpak)"
+        echo "5) Install Discord (deb)"
         echo "6) Install Visual Studio Code"
         echo "7) Install ALL (Auto)"
         echo "0) EXIT"
