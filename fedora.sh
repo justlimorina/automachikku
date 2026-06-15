@@ -98,7 +98,7 @@ show_menu() {
     while true; do
         echo ""
         echo "=================================================="
-        echo "   Automachikku (オートマチック) Installation Tools   "
+        echo "Automachikku (オートマチック) Installation Tools"
         echo "=================================================="
         echo "1) Update system (Update & Upgrade)"
         echo "2) Install Essentials"
