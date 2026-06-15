@@ -5,6 +5,38 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+# Check OS compatibility (Debian/Ubuntu and derivatives)
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+else
+    echo "Error: /etc/os-release not found. Cannot verify OS compatibility."
+    exit 1
+fi
+
+is_compatible=false
+
+# Check ID
+if [[ "$ID" = "debian" || "$ID" = "ubuntu" ]]; then
+    is_compatible=true
+fi
+
+# Check ID_LIKE if ID is not directly matched
+if [ "$is_compatible" = false ] && [ -n "$ID_LIKE" ]; then
+    for like in $ID_LIKE; do
+        if [[ "$like" = "debian" || "$like" = "ubuntu" ]]; then
+            is_compatible=true
+            break
+        fi
+    done
+fi
+
+if [ "$is_compatible" = false ]; then
+    echo "Error: This script is only compatible with Debian, Ubuntu, or their derivatives."
+    echo "Detected ID: $ID, ID_LIKE: $ID_LIKE"
+    exit 1
+fi
+
+
 update_system() {
     echo "Updating system..."
     apt update && apt upgrade -y
