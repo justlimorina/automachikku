@@ -39,6 +39,8 @@ fi
 
 # Software Versions
 CHROME_VERSION="150.0.7871.100"
+FIREFOX_VERSION="152.0.5"
+ZEN_VERSION="1.21.5b"
 
 
 update_system() {
@@ -80,6 +82,106 @@ install_google_chrome(){
     echo "Installed Google Chrome successfully"
 }
 
+install_firefox(){
+    echo "Installing Firefox (Target version: ${FIREFOX_VERSION})..."
+    
+    if command -v curl &> /dev/null; then
+        DOWNLOADED_VERSION=$(curl -sIL "https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US" | grep -i "^location:" | head -n 1 | grep -oP '/releases/\K[0-9.]+(?=/linux)')
+        if [ -n "$DOWNLOADED_VERSION" ]; then
+            echo "Downloaded Firefox version: ${DOWNLOADED_VERSION}"
+            if [ "$DOWNLOADED_VERSION" != "$FIREFOX_VERSION" ]; then
+                echo "=================================================="
+                echo "WARNING: Downloaded version ($DOWNLOADED_VERSION) differs"
+                echo "         from script target version ($FIREFOX_VERSION)."
+                echo "=================================================="
+            fi
+        fi
+    fi
+
+    wget -O firefox.tar.xz "https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US"
+    rm -rf /opt/firefox
+    tar -xf firefox.tar.xz -C /opt/
+    rm firefox.tar.xz
+    
+    ln -sf /opt/firefox/firefox /usr/local/bin/firefox
+    
+    cat <<EOF > /usr/share/applications/firefox.desktop
+[Desktop Entry]
+Name=Firefox
+Comment=Web Browser
+Exec=/opt/firefox/firefox %u
+Icon=/opt/firefox/browser/chrome/icons/default/default128.png
+Terminal=false
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;
+StartupNotify=true
+EOF
+
+    echo "Installed Firefox successfully"
+}
+
+install_brave(){
+    echo "Installing Brave Browser..."
+    apt install curl -y
+    curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" > /etc/apt/sources.list.d/brave-browser-release.list
+    apt update
+    apt install brave-browser -y
+    echo "Installed Brave Browser successfully"
+}
+
+install_edge(){
+    echo "Installing Microsoft Edge..."
+    mkdir -p /etc/apt/keyrings
+    apt install curl gpg -y
+    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/keyrings/microsoft.gpg
+    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge.list
+    apt update
+    apt install microsoft-edge-stable -y
+    echo "Installed Microsoft Edge successfully"
+}
+
+install_zen(){
+    echo "Installing Zen Browser (Target version: ${ZEN_VERSION})..."
+    
+    if command -v curl &> /dev/null; then
+        DOWNLOADED_VERSION=$(curl -s https://api.github.com/repos/zen-browser/desktop/releases/latest | python3 -c "import sys, json; print(json.load(sys.stdin)['tag_name'])" 2>/dev/null)
+        if [ -n "$DOWNLOADED_VERSION" ]; then
+            echo "Downloaded Zen Browser version: ${DOWNLOADED_VERSION}"
+            if [ "$DOWNLOADED_VERSION" != "$ZEN_VERSION" ]; then
+                echo "=================================================="
+                echo "WARNING: Downloaded version ($DOWNLOADED_VERSION) differs"
+                echo "         from script target version ($ZEN_VERSION)."
+                echo "=================================================="
+            fi
+        fi
+    fi
+
+    wget -O zen.tar.xz "https://github.com/zen-browser/desktop/releases/latest/download/zen.linux-x86_64.tar.xz"
+    rm -rf /opt/zen
+    tar -xf zen.tar.xz -C /opt/
+    rm zen.tar.xz
+    
+    ln -sf /opt/zen/zen /usr/local/bin/zen
+    
+    cat <<EOF > /usr/share/applications/zen.desktop
+[Desktop Entry]
+Name=Zen Browser
+Comment=Web Browser
+Exec=/opt/zen/zen %u
+Icon=/opt/zen/browser/chrome/icons/default/default128.png
+Terminal=false
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;
+StartupWMClass=zen-alpha
+StartupNotify=true
+EOF
+
+    echo "Installed Zen Browser successfully"
+}
+
 install_discord(){
     echo "Installing Discord..."
     apt install wget -y
@@ -109,6 +211,10 @@ install_all(){
     install_essentials
     install_flatpak
     install_google_chrome
+    install_firefox
+    install_brave
+    install_edge
+    install_zen
     install_discord
     install_vscode
     echo "=================================================="
@@ -126,25 +232,42 @@ show_menu() {
         echo "2) Install Essentials"
         echo "3) Install Flatpak"
         echo "4) Install Google Chrome"
-        echo "5) Install Discord (deb)"
-        echo "6) Install Visual Studio Code"
-        echo "7) Install ALL (Auto)"
+        echo "5) Install Firefox (Latest Stable)"
+        echo "6) Install Brave Browser"
+        echo "7) Install Microsoft Edge"
+        echo "8) Install Zen Browser (Latest Stable)"
+        echo "9) Install Discord (deb)"
+        echo "10) Install Visual Studio Code"
+        echo "11) Install ALL (Auto)"
         echo "0) EXIT"
         echo "========================================="
         
-        read -p "Please enter your choice (0-7): " choice
+        read -p "Please enter your choices (e.g. 2 4 6, or 11 for ALL): " choices
 
-        case $choice in
-            1) update_system ;;
-            2) install_essentials ;;
-            3) install_flatpak ;;
-            4) install_google_chrome ;;
-            5) install_discord ;;
-            6) install_vscode ;;
-            7) install_all ;;
-            0) echo "Exited."; exit 0 ;;
-            *) echo "Invalid choice, please try again!" ;;
-        esac
+        # Normalize spaces and commas
+        choices=$(echo "$choices" | tr ',' ' ' | tr -s ' ')
+
+        if [ -z "$choices" ]; then
+            continue
+        fi
+
+        for choice in $choices; do
+            case $choice in
+                1) update_system ;;
+                2) install_essentials ;;
+                3) install_flatpak ;;
+                4) install_google_chrome ;;
+                5) install_firefox ;;
+                6) install_brave ;;
+                7) install_edge ;;
+                8) install_zen ;;
+                9) install_discord ;;
+                10) install_vscode ;;
+                11) install_all; break ;;
+                0) echo "Exited."; exit 0 ;;
+                *) echo "Invalid choice: $choice, skipping." ;;
+            esac
+        done
     done
 }
 
