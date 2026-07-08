@@ -1,4 +1,4 @@
-name: Software Version Check
+name: Software Version Update
 
 on:
   schedule:
@@ -6,109 +6,57 @@ on:
   workflow_dispatch:      # Allows manual trigger
 
 jobs:
-  check-versions:
+  update-versions:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Allows committing and pushing changes
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check and compare software versions
+      - name: Check and auto-update software versions
         run: |
-          status=0
-
-          # ==================================================
-          # 1. GOOGLE CHROME
-          # ==================================================
-          echo "Checking Google Chrome..."
+          # Fetch latest versions
           LATEST_CHROME=$(python3 -c "import urllib.request, json; print(json.loads(urllib.request.urlopen('https://versionhistory.googleapis.com/v1/chrome/platforms/linux/channels/stable/versions').read())['versions'][0]['version'])")
-          echo "Latest stable Chrome: $LATEST_CHROME"
-          
-          DEBIAN_CHROME=$(python3 -c "import re; m = re.search(r'CHROME_VERSION=\"([^\"]+)\"', open('debian.sh').read()); print(m.group(1) if m else '')")
-          FEDORA_CHROME=$(python3 -c "import re; m = re.search(r'CHROME_VERSION=\"([^\"]+)\"', open('fedora.sh').read()); print(m.group(1) if m else '')")
-          
-          echo "debian.sh target Chrome version: $DEBIAN_CHROME"
-          echo "fedora.sh target Chrome version: $FEDORA_CHROME"
-          
-          if [ -z "$DEBIAN_CHROME" ]; then
-            echo "::error file=debian.sh::CHROME_VERSION not found in debian.sh"
-            status=1
-          elif [ "$LATEST_CHROME" != "$DEBIAN_CHROME" ]; then
-            echo "::warning file=debian.sh::debian.sh Chrome ($DEBIAN_CHROME) is outdated compared to latest stable ($LATEST_CHROME)"
-            status=1
-          fi
-          
-          if [ -z "$FEDORA_CHROME" ]; then
-            echo "::error file=fedora.sh::CHROME_VERSION not found in fedora.sh"
-            status=1
-          elif [ "$LATEST_CHROME" != "$FEDORA_CHROME" ]; then
-            echo "::warning file=fedora.sh::fedora.sh Chrome ($FEDORA_CHROME) is outdated compared to latest stable ($LATEST_CHROME)"
-            status=1
-          fi
-
-          # ==================================================
-          # 2. FIREFOX
-          # ==================================================
-          echo "Checking Firefox..."
           LATEST_FIREFOX=$(python3 -c "import urllib.request, re; req = urllib.request.Request('https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US', method='HEAD'); res = urllib.request.urlopen(req); url = res.url; print(re.search(r'/releases/([0-9.]+)/', url).group(1))")
-          echo "Latest stable Firefox: $LATEST_FIREFOX"
-          
-          DEBIAN_FIREFOX=$(python3 -c "import re; m = re.search(r'FIREFOX_VERSION=\"([^\"]+)\"', open('debian.sh').read()); print(m.group(1) if m else '')")
-          FEDORA_FIREFOX=$(python3 -c "import re; m = re.search(r'FIREFOX_VERSION=\"([^\"]+)\"', open('fedora.sh').read()); print(m.group(1) if m else '')")
-          
-          echo "debian.sh target Firefox version: $DEBIAN_FIREFOX"
-          echo "fedora.sh target Firefox version: $FEDORA_FIREFOX"
-          
-          if [ -z "$DEBIAN_FIREFOX" ]; then
-            echo "::error file=debian.sh::FIREFOX_VERSION not found in debian.sh"
-            status=1
-          elif [ "$LATEST_FIREFOX" != "$DEBIAN_FIREFOX" ]; then
-            echo "::warning file=debian.sh::debian.sh Firefox ($DEBIAN_FIREFOX) is outdated compared to latest stable ($LATEST_FIREFOX)"
-            status=1
-          fi
-          
-          if [ -z "$FEDORA_FIREFOX" ]; then
-            echo "::error file=fedora.sh::FIREFOX_VERSION not found in fedora.sh"
-            status=1
-          elif [ "$LATEST_FIREFOX" != "$FEDORA_FIREFOX" ]; then
-            echo "::warning file=fedora.sh::fedora.sh Firefox ($FEDORA_FIREFOX) is outdated compared to latest stable ($LATEST_FIREFOX)"
-            status=1
-          fi
-
-          # ==================================================
-          # 3. ZEN BROWSER
-          # ==================================================
-          echo "Checking Zen Browser..."
           LATEST_ZEN=$(python3 -c "import urllib.request, json; req = urllib.request.Request('https://api.github.com/repos/zen-browser/desktop/releases/latest', headers={'User-Agent': 'Mozilla/5.0'}); res = urllib.request.urlopen(req); data = json.loads(res.read()); print(data['tag_name'])")
-          echo "Latest stable Zen Browser: $LATEST_ZEN"
-          
-          DEBIAN_ZEN=$(python3 -c "import re; m = re.search(r'ZEN_VERSION=\"([^\"]+)\"', open('debian.sh').read()); print(m.group(1) if m else '')")
-          FEDORA_ZEN=$(python3 -c "import re; m = re.search(r'ZEN_VERSION=\"([^\"]+)\"', open('fedora.sh').read()); print(m.group(1) if m else '')")
-          
-          echo "debian.sh target Zen version: $DEBIAN_ZEN"
-          echo "fedora.sh target Zen version: $FEDORA_ZEN"
-          
-          if [ -z "$DEBIAN_ZEN" ]; then
-            echo "::error file=debian.sh::ZEN_VERSION not found in debian.sh"
-            status=1
-          elif [ "$LATEST_ZEN" != "$DEBIAN_ZEN" ]; then
-            echo "::warning file=debian.sh::debian.sh Zen ($DEBIAN_ZEN) is outdated compared to latest stable ($LATEST_ZEN)"
-            status=1
-          fi
-          
-          if [ -z "$FEDORA_ZEN" ]; then
-            echo "::error file=fedora.sh::ZEN_VERSION not found in fedora.sh"
-            status=1
-          elif [ "$LATEST_ZEN" != "$FEDORA_ZEN" ]; then
-            echo "::warning file=fedora.sh::fedora.sh Zen ($FEDORA_ZEN) is outdated compared to latest stable ($LATEST_ZEN)"
-            status=1
-          fi
 
-          # ==================================================
-          # FINAL STATUS
-          # ==================================================
-          if [ $status -ne 0 ]; then
-            echo "::error::Software version mismatch detected. Please update the scripts."
-            exit 1
+          echo "Latest Chrome: $LATEST_CHROME"
+          echo "Latest Firefox: $LATEST_FIREFOX"
+          echo "Latest Zen: $LATEST_ZEN"
+
+          # Perform updates in python
+          python3 -c "
+import re
+
+def update_file(path, var_name, value):
+    with open(path, 'r') as f:
+        content = f.read()
+    pattern = rf'({var_name}=\")[^\"]+(\")'
+    new_content, count = re.subn(pattern, rf'\g<1>{value}\g<2>', content)
+    if count > 0:
+        with open(path, 'w') as f:
+            f.write(new_content)
+        print(f'Updated {var_name} to {value} in {path}')
+
+for file_path in ['debian.sh', 'fedora.sh']:
+    update_file(file_path, 'CHROME_VERSION', '$LATEST_CHROME')
+    update_file(file_path, 'FIREFOX_VERSION', '$LATEST_FIREFOX')
+    update_file(file_path, 'ZEN_VERSION', '$LATEST_ZEN')
+"
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          git add debian.sh fedora.sh
+          
+          # Check if there are any changes to commit
+          if git diff --cached --quiet; then
+            echo "No updates detected. Scripts are already up-to-date."
           else
-            echo "Success: Software versions in scripts match the latest upstream stable versions!"
+            git commit -m "chore: auto-update software versions to latest stable (automatically done by GH Actions./.)"
+            git push
+            echo "Successfully updated and pushed new versions to repository!"
           fi
