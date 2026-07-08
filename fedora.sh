@@ -37,6 +37,10 @@ if [ "$is_compatible" = false ]; then
 fi
 
 
+# Software Versions
+CHROME_VERSION="150.0.7871.100"
+
+
 update_system() {
     echo "Updating system..."
     dnf upgrade -y
@@ -57,8 +61,22 @@ install_flatpak(){
 }
 
 install_google_chrome(){
-    echo "Installing Google Chrome..."
+    echo "Installing Google Chrome (Target version: ${CHROME_VERSION})..."
     wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+    
+    if command -v rpm &> /dev/null; then
+        DOWNLOADED_VERSION=$(rpm -qp --queryformat '%{VERSION}' google-chrome-stable_current_x86_64.rpm 2>/dev/null)
+        if [ -n "$DOWNLOADED_VERSION" ]; then
+            echo "Downloaded Google Chrome version: ${DOWNLOADED_VERSION}"
+            if [ "$DOWNLOADED_VERSION" != "$CHROME_VERSION" ]; then
+                echo "=================================================="
+                echo "WARNING: Downloaded version ($DOWNLOADED_VERSION) differs"
+                echo "         from script target version ($CHROME_VERSION)."
+                echo "=================================================="
+            fi
+        fi
+    fi
+
     dnf install ./google-chrome-stable_current_x86_64.rpm -y
     rm google-chrome-stable_current_x86_64.rpm
     echo "Installed Google Chrome successfully"

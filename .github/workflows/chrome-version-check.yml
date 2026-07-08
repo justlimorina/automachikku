@@ -1,0 +1,51 @@
+name: Chrome Version Check
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight UTC
+  workflow_dispatch:      # Allows manual trigger
+
+jobs:
+  check-chrome-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check and compare Chrome version
+        run: |
+          # Fetch latest version from Google API
+          LATEST_VERSION=$(python3 -c "import urllib.request, json; print(json.loads(urllib.request.urlopen('https://versionhistory.googleapis.com/v1/chrome/platforms/linux/channels/stable/versions').read())['versions'][0]['version'])")
+          echo "Latest Google Chrome stable version for Linux: $LATEST_VERSION"
+          
+          # Extract versions from local scripts
+          DEBIAN_VERSION=$(python3 -c "import re; m = re.search(r'CHROME_VERSION=\"([^\"]+)\"', open('debian.sh').read()); print(m.group(1) if m else '')")
+          FEDORA_VERSION=$(python3 -c "import re; m = re.search(r'CHROME_VERSION=\"([^\"]+)\"', open('fedora.sh').read()); print(m.group(1) if m else '')")
+          
+          echo "debian.sh target version: $DEBIAN_VERSION"
+          echo "fedora.sh target version: $FEDORA_VERSION"
+          
+          status=0
+          
+          if [ -z "$DEBIAN_VERSION" ]; then
+            echo "::error file=debian.sh::CHROME_VERSION not found in debian.sh"
+            status=1
+          elif [ "$LATEST_VERSION" != "$DEBIAN_VERSION" ]; then
+            echo "::warning file=debian.sh::debian.sh ($DEBIAN_VERSION) is outdated compared to latest stable ($LATEST_VERSION)"
+            status=1
+          fi
+          
+          if [ -z "$FEDORA_VERSION" ]; then
+            echo "::error file=fedora.sh::CHROME_VERSION not found in fedora.sh"
+            status=1
+          elif [ "$LATEST_VERSION" != "$FEDORA_VERSION" ]; then
+            echo "::warning file=fedora.sh::fedora.sh ($FEDORA_VERSION) is outdated compared to latest stable ($LATEST_VERSION)"
+            status=1
+          fi
+          
+          if [ $status -ne 0 ]; then
+            echo "::error::Google Chrome version mismatch detected. Please update the scripts."
+            exit 1
+          else
+            echo "Success: Chrome versions in scripts match the latest upstream stable version!"
+          fi

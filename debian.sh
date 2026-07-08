@@ -37,6 +37,10 @@ if [ "$is_compatible" = false ]; then
 fi
 
 
+# Software Versions
+CHROME_VERSION="150.0.7871.100"
+
+
 update_system() {
     echo "Updating system..."
     apt update && apt upgrade -y
@@ -57,8 +61,20 @@ install_flatpak(){
 }
 
 install_google_chrome(){
-    echo "Installing Google Chrome..."
+    echo "Installing Google Chrome (Target version: ${CHROME_VERSION})..."
     wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+    
+    if command -v dpkg-deb &> /dev/null; then
+        DOWNLOADED_VERSION=$(dpkg-deb -f google-chrome-stable_current_amd64.deb Version)
+        echo "Downloaded Google Chrome version: ${DOWNLOADED_VERSION}"
+        if [ "$DOWNLOADED_VERSION" != "$CHROME_VERSION" ]; then
+            echo "=================================================="
+            echo "WARNING: Downloaded version ($DOWNLOADED_VERSION) differs"
+            echo "         from script target version ($CHROME_VERSION)."
+            echo "=================================================="
+        fi
+    fi
+
     apt install ./google-chrome-stable_current_amd64.deb -y
     rm google-chrome-stable_current_amd64.deb
     echo "Installed Google Chrome successfully"
