@@ -64,10 +64,10 @@ install_flatpak(){
 
 install_google_chrome(){
     echo "Installing Google Chrome (Target version: ${CHROME_VERSION})..."
-    wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+    wget -O /tmp/google-chrome-stable_current_amd64.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
     
     if command -v dpkg-deb &> /dev/null; then
-        DOWNLOADED_VERSION=$(dpkg-deb -f google-chrome-stable_current_amd64.deb Version)
+        DOWNLOADED_VERSION=$(dpkg-deb -f /tmp/google-chrome-stable_current_amd64.deb Version)
         echo "Downloaded Google Chrome version: ${DOWNLOADED_VERSION}"
         if [ "$DOWNLOADED_VERSION" != "$CHROME_VERSION" ]; then
             echo "=================================================="
@@ -77,8 +77,8 @@ install_google_chrome(){
         fi
     fi
 
-    apt install ./google-chrome-stable_current_amd64.deb -y
-    rm google-chrome-stable_current_amd64.deb
+    apt install /tmp/google-chrome-stable_current_amd64.deb -y
+    rm /tmp/google-chrome-stable_current_amd64.deb
     echo "Installed Google Chrome successfully"
 }
 
@@ -98,10 +98,10 @@ install_firefox(){
         fi
     fi
 
-    wget -O firefox.tar.xz "https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US"
+    wget -O /tmp/firefox.tar.xz "https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US"
     rm -rf /opt/firefox
-    tar -xf firefox.tar.xz -C /opt/
-    rm firefox.tar.xz
+    tar -xf /tmp/firefox.tar.xz -C /opt/
+    rm /tmp/firefox.tar.xz
     
     ln -sf /opt/firefox/firefox /usr/local/bin/firefox
     
@@ -158,10 +158,10 @@ install_zen(){
         fi
     fi
 
-    wget -O zen.tar.xz "https://github.com/zen-browser/desktop/releases/latest/download/zen.linux-x86_64.tar.xz"
+    wget -O /tmp/zen.tar.xz "https://github.com/zen-browser/desktop/releases/latest/download/zen.linux-x86_64.tar.xz"
     rm -rf /opt/zen
-    tar -xf zen.tar.xz -C /opt/
-    rm zen.tar.xz
+    tar -xf /tmp/zen.tar.xz -C /opt/
+    rm /tmp/zen.tar.xz
     
     ln -sf /opt/zen/zen /usr/local/bin/zen
     
@@ -185,9 +185,9 @@ EOF
 install_discord(){
     echo "Installing Discord..."
     apt install wget -y
-    wget -O discord.deb "https://discord.com/api/download?platform=linux&format=deb"
-    apt install ./discord.deb -y
-    rm discord.deb
+    wget -O /tmp/discord.deb "https://discord.com/api/download?platform=linux&format=deb"
+    apt install /tmp/discord.deb -y
+    rm /tmp/discord.deb
     echo "Installed Discord successfully"
 }
 
